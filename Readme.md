@@ -26,7 +26,7 @@ pagelet) is sent to the browser and rendered on the screen:
 
 ## Quick Start
 
-1. Implement application
+Implement application:
 ```golang
 // Render generates the basic html markup with containers for individual pagelets.
 func (homePageApplication HomePageApplication) Render(w http.ResponseWriter, r *http.Request, pageletFunc func() bool) {
@@ -54,7 +54,7 @@ func (homePageApplication HomePageApplication) PageletsContainerMapping() map[st
 
 Application is the representation of entire webpage and requires two methods. The method 1 renders the application template and pageletContainerMapping returns the pagelet vs container-id (in dom) mapping.
 
-2. Implement Pagelet
+Implement Pagelet:
 
 ```golang
 import (
@@ -83,7 +83,7 @@ func (profilePagelet ProfilePagelet) Render(r *http.Request) (ret template.HTML)
 ```
 Pagelets requires only 1 method render which returns html.
 
-3. Render Pagelets in template
+Render Pagelets in template:
 
 ```
 <body>
