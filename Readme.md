@@ -24,6 +24,98 @@ pagelet) is sent to the browser and rendered on the screen:
 
 ![Page loading with BigPipe](out.gif)
 
+## Quick Start
+
+1. Implement application
+```golang
+// Render generates the basic html markup with containers for individual pagelets.
+func (homePageApplication HomePageApplication) Render(w http.ResponseWriter, r *http.Request, pageletFunc func() bool) {
+	applicationTemplate, err := template.ParseFiles("templates/homepageapplication.html")
+	if err != nil {
+		panic(err)
+	}
+	data := Data{pageletFunc}
+	err1 := applicationTemplate.Execute(w, data)
+	if err1 != nil {
+		http.Error(w, err1.Error(), http.StatusInternalServerError)
+	}
+}
+
+// PageletsContainerMapping return the list of pagelet in the application with containerId.
+func (homePageApplication HomePageApplication) PageletsContainerMapping() map[string]bigpipe.Pagelet {
+	return map[string]bigpipe.Pagelet{
+		"searchPagelet":         SearchPagelet{},
+		"recommendationPagelet": RecommendationPagelet{},
+		"profilePagelet":        ProfilePagelet{},
+		"adsPagelet":            AdsPagelet{},
+	}
+}
+```
+
+Application is the representation of entire webpage and requires two methods. The method 1 renders the application template and pageletContainerMapping returns the pagelet vs container-id (in dom) mapping.
+
+2. Implement Pagelet
+
+```golang
+import (
+	"bytes"
+	"html/template"
+	"net/http"
+	"time"
+)
+
+// ProfilePagelet is 1 more sample service simulation.
+type ProfilePagelet struct{}
+
+// Render generates html from template. The html returned is then inserted into container by application.
+// Note - Clients are responsible for handling the errors on their own and return the error dom element.
+func (profilePagelet ProfilePagelet) Render(r *http.Request) (ret template.HTML) {
+	time.Sleep(650 * time.Millisecond)
+	buf := bytes.NewBuffer([]byte{})
+	templates, err := template.ParseFiles("templates/profilepagelet.gohtml")
+	if err != nil {
+		return
+	}
+	templates.Execute(buf, nil)
+	ret = template.HTML(buf.String())
+	return
+}
+```
+Pagelets requires only 1 method render which returns html.
+
+3. Render Pagelets in template
+
+```
+<body>
+
+    <table class="wrapper">
+        <tr>
+            <td id="searchPagelet">
+            </td>
+            <td id="recommendationPagelet">
+            </td>
+        </tr>
+        <tr>
+            <td id="profilePagelet">
+            </td>
+            <td id="adsPagelet">
+            </td>
+        </tr>
+    </table>
+    ....
+    {{ if (call .PageletFunc)}}
+    {{ end }}
+</body>
+
+func (homePageApplication HomePageApplication) Render(..., pageletFunc func() bool) {
+	...
+	data := Data{pageletFunc}
+	err1 := applicationTemplate.Execute(w, data)
+	....
+}
+```
+Invoke the pagelet function passed to your application after the complete dom is rendered. Note that this function blocks rendering of further contents. All the pagelets are rendered now and inserted in dom by Javascript. After all the pagelets are rendered pending javascript and body+header end tags are flushed.
+
 ## Client-side vs server-side rendering
 
 bigpipe-golang works by flushing the html skeleton followed by individual pagelets when they are available.
