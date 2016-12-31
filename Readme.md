@@ -118,16 +118,13 @@ Invoke the pagelet function passed to your application after the complete dom is
 
 ## Client-side vs server-side rendering
 
-bigpipe-golang works by flushing the html skeleton followed by individual pagelets when they are available.
-
-bigpipe-golang supports only client-side BigPipe streaming. Client-side streaming sends down the
+bigpipe-golang supports both client-side and server-side BigPipe streaming. Client-side streaming sends down the
 pagelets in whatever order they complete and uses JavaScript to insert each pagelet into the correct spot in the DOM.
 This gives you the fastest possible loading time, but it does add a dependency on JavaScript. 
 
 For use cases where you want to avoid JavaScript, such as slower browsers or search engine crawlers (i.e. SEO), you need to use server-side
 rendering, which sends all the pagelets down already rendered as HTML and in the proper order. This will have a longer
-page-load time than client-side rendering, but still much faster than not using BigPipe at all. It is currently not supported by
-bigpipe-golang and tracked in [issue#1](https://github.com/bangarharshit/bigpipe-golang/issues/1). 
+page-load time than client-side rendering, but still much faster than not using BigPipe at all. 
 
 ## Composing independent pagelets
 
