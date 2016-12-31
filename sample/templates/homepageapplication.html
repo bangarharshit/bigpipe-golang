@@ -9,17 +9,21 @@
     <table class="wrapper">
         <tr>
             <td>
+                <div id="searchPageletLoadingBar" class="loader"></div>
                 {{(call .RenderPagelet "searchPagelet")}}
             </td>
             <td>
+                <div id="recommendationPageletLoadingBar" class="loader"></div>
                 {{(call .RenderPagelet "recommendationPagelet")}}
             </td>
         </tr>
         <tr>
             <td>
+                <div id="profilePageletLoadingBar" class="loader"></div>
                 {{(call .RenderPagelet "profilePagelet")}}
             </td>
             <td>
+                <div id="adsPageletLoadingBar" class="loader"></div>
                 {{(call .RenderPagelet "adsPagelet")}}
             </td>
         </tr>

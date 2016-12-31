@@ -21,7 +21,7 @@ type Application interface {
 
 func servePageletWrapper(
 	rw http.ResponseWriter,
-	channelTemplateMapping map[string]<-chan template.HTML,
+	channelTemplateMapping map[string]PageletChannelContainer,
 	clientSideRendering bool,
 	flusher http.Flusher) func() bool {
 	return func() bool {
@@ -40,13 +40,13 @@ func ServeApplication(application Application, clientSideRendering bool) http.Ha
 			http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
 			return
 		}
-		application.Render(rw, r, servePageletWrapper(rw, channelTemplateMapping, clientSideRendering, flusher), renderPagelet(clientSideRendering, channelTemplateMapping, flusher))
+		application.Render(rw, r, servePageletWrapper(rw, channelTemplateMapping, clientSideRendering, flusher), renderPagelet(clientSideRendering, channelTemplateMapping, flusher, rw))
 	}
 }
 
 // ServePagelet renders individual pagelets in an application. The pagelets are rendered in separate go-routines.
 // Note the following things are not implemented and
-func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]<-chan template.HTML, isClientSideRendering bool, flusher http.Flusher) (success bool) {
+func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]PageletChannelContainer, isClientSideRendering bool, flusher http.Flusher) (success bool) {
 	if !isClientSideRendering {
 		success = true
 		return
@@ -59,22 +59,30 @@ func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]<-ch
 	return
 }
 
-func startPageletRendering(application Application, r *http.Request) map[string]<-chan template.HTML {
-	channelTemplateMap := make(map[string]<-chan template.HTML)
+func startPageletRendering(application Application, r *http.Request) map[string]PageletChannelContainer {
+	channelTemplateMap := make(map[string]PageletChannelContainer)
 	for containerID, pagelet := range application.PageletsContainerMapping() {
-		channelTemplateMap[containerID] = startRequest(r, pagelet)
+		channelTemplateMap[containerID] = PageletChannelContainer{pagelet, startRequest(r, pagelet)}
 	}
 	return channelTemplateMap
 }
 
-func renderPagelet(isClientSideRendering bool, channelTemplateMapping map[string]<-chan template.HTML, flusher http.Flusher) func(pageletId string) template.HTML {
+func renderPagelet(isClientSideRendering bool, channelTemplateMapping map[string]PageletChannelContainer, flusher http.Flusher, rw http.ResponseWriter) func(pageletId string) template.HTML {
 	return func(pageletId string) template.HTML {
 		if isClientSideRendering {
 			return generateContainerDiv(pageletId)
 		}
 		flusher.Flush()
 		pageletContentChannel := channelTemplateMapping[pageletId]
-		return <-pageletContentChannel
+		pageletContent := <-pageletContentChannel.pageletChannelTemplate
+
+		preLoadConent := channelTemplateMapping[pageletId].pagelet.PreLoad()
+		_, err1 := fmt.Fprintf(rw, "%s", preLoadConent)
+		if err1 != nil {
+			fmt.Println(err1)
+		}
+
+		return pageletContent
 	}
 }
 

@@ -17,17 +17,23 @@ type Pagelet interface {
 	// Render generates html from template. The html returned is then inserted into container by application.
 	// Note - Clients are responsible for handling the errors on their own and return the error dom element.
 	Render(r *http.Request) (ret template.HTML)
+	PreLoad() (ret template.HTML)
+}
+
+type PageletChannelContainer struct {
+	pagelet Pagelet
+	pageletChannelTemplate <- chan template.HTML
 }
 
 func clientSideRender(
 	rw http.ResponseWriter,
 	flusher http.Flusher,
-	templateChannelMapping map[string]<-chan template.HTML) {
+	templateChannelMapping map[string]PageletChannelContainer) {
 	cases := make([]reflect.SelectCase, len(templateChannelMapping))
 	idContainerMapping := make(map[int]string)
 	index := 0
 	for i, ch := range templateChannelMapping {
-		cases[index] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)}
+		cases[index] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch.pageletChannelTemplate)}
 		idContainerMapping[index] = i
 		index = index + 1
 	}
@@ -47,6 +53,14 @@ func clientSideRender(
 			ContainerID string
 			Data        template.HTML
 		}{idContainerMapping[chosen], ret}
+
+		preLoadConent := templateChannelMapping[idContainerMapping[chosen]].pagelet.PreLoad()
+		_, err1 := fmt.Fprintf(rw, "%s", preLoadConent)
+		if err1 != nil {
+			fmt.Println(err1)
+			return
+		}
+
 		applicationGlueTemplate.Execute(buf, data)
 		ret1 := template.HTML(buf.String())
 		_, err2 := fmt.Fprintf(rw, "%s", ret1)

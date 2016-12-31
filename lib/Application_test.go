@@ -49,6 +49,9 @@ func (testPagelet TestPagelet) Render(r *http.Request) (ret template.HTML) {
 	return template.HTML("pagelet test content")
 }
 
+func (testPagelet TestPagelet)PreLoad() (ret template.HTML){
+	return template.HTML("")
+}
 // For testing handler check - https://elithrar.github.io/article/testing-http-handlers-go/
 func TestServeApplicationRendersApplicationForClientSideRendering(t *testing.T) {
 	testApplication := &TestApplication{}

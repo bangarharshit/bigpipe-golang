@@ -11,6 +11,6 @@ func main() {
 	go func() {
 		log.Fatal(http.ListenAndServe(":5000", http.FileServer(http.Dir("static/"))))
 	}()
-	http.HandleFunc("/home", bigpipe.ServeApplication(homePageApplication, false))
+	http.HandleFunc("/home", bigpipe.ServeApplication(homePageApplication, true))
 	http.ListenAndServe(":3000", nil)
 }
