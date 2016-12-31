@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"sync"
+	"reflect"
 )
 
 // Pagelet is the single unit of rendering in big-pipe world.
@@ -19,16 +19,34 @@ type Pagelet interface {
 	Render(r *http.Request) (ret template.HTML)
 }
 
-func startRequest(rw http.ResponseWriter, flusher http.Flusher, pagelet Pagelet, wg *sync.WaitGroup, r *http.Request, lock *sync.Mutex, containerID string) {
-	wg.Add(1)
-	go func(rw http.ResponseWriter, flusher http.Flusher, pagelet Pagelet, wg *sync.WaitGroup, containerID string) {
-		defer wg.Done()
-		ret := pagelet.Render(r)
+func clientSideRender(
+	rw http.ResponseWriter,
+	flusher http.Flusher,
+	templateChannelMapping map[string]<-chan template.HTML) {
+	cases := make([]reflect.SelectCase, len(templateChannelMapping))
+	idContainerMapping := make(map[int]string)
+	index := 0
+	for i, ch := range templateChannelMapping {
+		cases[index] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)}
+		idContainerMapping[index] = i
+		index = index + 1
+	}
+
+	remaining := len(cases)
+	for remaining > 0 {
+		chosen, value, ok := reflect.Select(cases)
+		if !ok {
+			// The chosen channel has been closed, so zero out the channel to disable the case
+			cases[chosen].Chan = reflect.ValueOf(nil)
+			continue
+		}
+		remaining --
 		buf := bytes.NewBuffer([]byte{})
+		ret := template.HTML(value.String())
 		data := struct {
 			ContainerID string
 			Data        template.HTML
-		}{containerID, ret}
+		}{idContainerMapping[chosen], ret}
 		applicationGlueTemplate.Execute(buf, data)
 		ret1 := template.HTML(buf.String())
 		_, err2 := fmt.Fprintf(rw, "%s", ret1)
@@ -36,10 +54,29 @@ func startRequest(rw http.ResponseWriter, flusher http.Flusher, pagelet Pagelet,
 			fmt.Println(err2)
 			return
 		}
-		lock.Lock()
-		defer lock.Unlock()
 		flusher.Flush()
-	}(rw, flusher, pagelet, wg, containerID)
+	}
+}
+
+func startRequest(r *http.Request, pagelet Pagelet) <-chan template.HTML {
+	pageletChannel := make(chan template.HTML)
+	go func() {
+		pageletChannel <- pagelet.Render(r)
+	}()
+	return pageletChannel
+
+}
+
+func generateContainerDiv(containerID string) template.HTML {
+	buf := bytes.NewBuffer([]byte{})
+	data := struct {
+		ContainerID string
+	}{containerID}
+	err := clientSideRendingContainerTemplate.Execute(buf, data)
+	if err != nil {
+		// todo: error handling
+	}
+	return template.HTML(buf.String())
 }
 
 var applicationGlueScript = "<script type=\"text/javascript\">" +
@@ -47,3 +84,7 @@ var applicationGlueScript = "<script type=\"text/javascript\">" +
 	"</script>"
 
 var applicationGlueTemplate = template.Must(template.New("applicationGlue").Parse(applicationGlueScript))
+
+var clientSideRenderingContainer = "<div id={{.ContainerID}}></div>"
+
+var clientSideRendingContainerTemplate = template.Must(template.New("clientSideRenderingContainerTemplate").Parse(clientSideRenderingContainer))

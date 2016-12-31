@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"sync"
 )
 
 // Application is representation of the entire web-page in big-pipe world.
@@ -14,48 +13,69 @@ import (
 // To render the complete webpage, specify the list of pagelets with container-id in PageletsContainerMapping method.
 type Application interface {
 	// Render generates the basic html markup with containers for individual pagelets.
-	Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool)
+	Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool, renderPagelet func(pageletId string) template.HTML)
 
 	// PageletsContainerMapping return the list of pagelet in the application with containerId.
 	PageletsContainerMapping() map[string]Pagelet
 }
 
-func servePageletWrapper(rw http.ResponseWriter, r *http.Request, application Application) func() bool {
+func servePageletWrapper(
+	rw http.ResponseWriter,
+	channelTemplateMapping map[string]<-chan template.HTML,
+	clientSideRendering bool,
+	flusher http.Flusher) func() bool {
 	return func() bool {
-		return ServePagelet(rw, r, application)
+		return ServePagelet(rw, channelTemplateMapping, clientSideRendering, flusher)
 	}
 }
 
 // ServeApplication is the handler for rendering the complete web-page.
 // It adds application to scope by closure.
-func ServeApplication(application Application) http.HandlerFunc {
+func ServeApplication(application Application, clientSideRendering bool) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("content-type", "text/html")
-		application.Render(rw, r, servePageletWrapper(rw, r, application))
+		channelTemplateMapping := startPageletRendering(application, r)
+		flusher, ok := rw.(http.Flusher)
+		if !ok {
+			http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
+			return
+		}
+		application.Render(rw, r, servePageletWrapper(rw, channelTemplateMapping, clientSideRendering, flusher), renderPagelet(clientSideRendering, channelTemplateMapping, flusher))
 	}
 }
 
 // ServePagelet renders individual pagelets in an application. The pagelets are rendered in separate go-routines.
 // Note the following things are not implemented and
-func ServePagelet(rw http.ResponseWriter, r *http.Request, application Application) (success bool) {
-	wg := sync.WaitGroup{}
-
-	flusher, ok := rw.(http.Flusher)
-	if !ok {
-		http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
-		success = false
+func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]<-chan template.HTML, isClientSideRendering bool, flusher http.Flusher) (success bool) {
+	if !isClientSideRendering {
+		success = true
 		return
 	}
 	// This flush is required to flush application component.
 	renderBigPipeJavascript(rw)
 	flusher.Flush()
-	lock := &sync.Mutex{}
-	for containerID, pagelet := range application.PageletsContainerMapping() {
-		startRequest(rw, flusher, pagelet, &wg, r, lock, containerID)
-	}
-	wg.Wait()
+	clientSideRender(rw, flusher, channelTemplateMapping)
 	success = true
 	return
+}
+
+func startPageletRendering(application Application, r *http.Request) map[string]<-chan template.HTML {
+	channelTemplateMap := make(map[string]<-chan template.HTML)
+	for containerID, pagelet := range application.PageletsContainerMapping() {
+		channelTemplateMap[containerID] = startRequest(r, pagelet)
+	}
+	return channelTemplateMap
+}
+
+func renderPagelet(isClientSideRendering bool, channelTemplateMapping map[string]<-chan template.HTML, flusher http.Flusher) func(pageletId string) template.HTML {
+	return func(pageletId string) template.HTML {
+		if isClientSideRendering {
+			return generateContainerDiv(pageletId)
+		}
+		flusher.Flush()
+		pageletContentChannel := channelTemplateMapping[pageletId]
+		return <-pageletContentChannel
+	}
 }
 
 func renderBigPipeJavascript(rw http.ResponseWriter) {
@@ -71,7 +91,6 @@ func renderBigPipeJavascript(rw http.ResponseWriter) {
 }
 
 var bigPipe = "<script type=\"text/javascript\">" +
-
 	"function renderInDom(value, containerId) {" +
 	"document.getElementById(containerId).innerHTML = value;" +
 	"}" +

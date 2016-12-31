@@ -1,25 +1,26 @@
 package bigpipe
 
 import (
-	"testing"
-	"net/http"
-	"io"
-	"net/http/httptest"
 	"html/template"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 // Sample testApplication with 0 pagelet
-type TestApplication struct {}
+type TestApplication struct{}
 
 // Sample testApplication with 1 pagelet
-type TestApplicationWithPagelet struct {}
+type TestApplicationWithPagelet struct{}
 
 // Sample pagelet
-type TestPagelet struct {}
+type TestPagelet struct{}
 
 var testApplicationContent = "test string"
+
 // Render just put test string inside responsewriter for testing.
-func (testApplication *TestApplication) Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool)  {
+func (testApplication *TestApplication) Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool, renderPagelet func(pageletId string) template.HTML) {
 	rw.WriteHeader(http.StatusOK)
 	io.WriteString(rw, testApplicationContent)
 }
@@ -30,7 +31,7 @@ func (testApplication *TestApplication) PageletsContainerMapping() map[string]Pa
 }
 
 // Render just put test string inside response writer for testing.
-func (testApplication *TestApplicationWithPagelet) Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool)  {
+func (testApplication *TestApplicationWithPagelet) Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool, renderPagelet func(pageletId string) template.HTML) {
 	rw.WriteHeader(http.StatusOK)
 	io.WriteString(rw, "test string")
 	// It is executed in a blocking way by templates. Simulating the same by invoking it manually.
@@ -44,14 +45,14 @@ func (testApplication *TestApplicationWithPagelet) PageletsContainerMapping() ma
 	}
 }
 
-func (testPagelet TestPagelet) Render(r *http.Request) (ret template.HTML)  {
+func (testPagelet TestPagelet) Render(r *http.Request) (ret template.HTML) {
 	return template.HTML("pagelet test content")
 }
 
 // For testing handler check - https://elithrar.github.io/article/testing-http-handlers-go/
-func TestServeApplicationRendersApplication(t *testing.T) {
+func TestServeApplicationRendersApplicationForClientSideRendering(t *testing.T) {
 	testApplication := &TestApplication{}
-	handlerFunc := ServeApplication(testApplication)
+	handlerFunc := ServeApplication(testApplication, true)
 	http.HandleFunc("/test", handlerFunc)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
@@ -82,9 +83,9 @@ func TestServeApplicationRendersApplication(t *testing.T) {
 	}
 }
 
-func TestServePageletShouldRenderPagelet(t *testing.T)  {
+func TestServePageletShouldRenderPageletForServerSideRendering(t *testing.T) {
 	testApplicationWithPagelet := &TestApplicationWithPagelet{}
-	handlerFunc := ServeApplication(testApplicationWithPagelet)
+	handlerFunc := ServeApplication(testApplicationWithPagelet, true)
 	http.HandleFunc("/testwithpagelet", handlerFunc)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
@@ -109,15 +110,15 @@ func TestServePageletShouldRenderPagelet(t *testing.T)  {
 	}
 
 	renderedText := "test string" + // Application template
-			// Bigpipe glue
-	                "<script type=\"text/javascript\">" +
-		        "function renderInDom(value, containerId) {" +
-		            "document.getElementById(containerId).innerHTML = value;" +
-		        "}" +
-			"</script>" +
-			"<script type=\"text/javascript\">" +
-				"renderInDom(\"pagelet test content\", \"testPagelet\")" + // Pagelet container and value.
-			"</script>"
+		// Bigpipe glue
+		"<script type=\"text/javascript\">" +
+		"function renderInDom(value, containerId) {" +
+		"document.getElementById(containerId).innerHTML = value;" +
+		"}" +
+		"</script>" +
+		"<script type=\"text/javascript\">" +
+		"renderInDom(\"pagelet test content\", \"testPagelet\")" + // Pagelet container and value.
+		"</script>"
 	// Check the response body is what we expect.
 	if rr.Body.String() != renderedText {
 		t.Errorf("handler returned unexpected body: got %v want %v",

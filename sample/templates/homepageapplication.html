@@ -8,15 +8,19 @@
 
     <table class="wrapper">
         <tr>
-            <td id="searchPagelet">
+            <td>
+                {{(call .RenderPagelet "searchPagelet")}}
             </td>
-            <td id="recommendationPagelet">
+            <td>
+                {{(call .RenderPagelet "recommendationPagelet")}}
             </td>
         </tr>
         <tr>
-            <td id="profilePagelet">
+            <td>
+                {{(call .RenderPagelet "profilePagelet")}}
             </td>
-            <td id="adsPagelet">
+            <td>
+                {{(call .RenderPagelet "adsPagelet")}}
             </td>
         </tr>
     </table>

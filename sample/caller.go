@@ -2,13 +2,15 @@ package main
 
 import (
 	"github.com/bangarharshit/bigpipe-golang/lib"
-	"net/http"
 	"log"
+	"net/http"
 )
 
 func main() {
 	homePageApplication := HomePageApplication{}
-	http.HandleFunc("/home", bigpipe.ServeApplication(homePageApplication))
+	go func() {
+		log.Fatal(http.ListenAndServe(":5000", http.FileServer(http.Dir("static/"))))
+	}()
+	http.HandleFunc("/home", bigpipe.ServeApplication(homePageApplication, false))
 	http.ListenAndServe(":3000", nil)
-	log.Fatal(http.ListenAndServe(":5000", http.FileServer(http.Dir("static/"))))
 }
