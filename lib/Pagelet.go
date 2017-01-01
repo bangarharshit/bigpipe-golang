@@ -16,7 +16,7 @@ import (
 type Pagelet interface {
 	// Render generates html from template. The html returned is then inserted into container by application.
 	// Note - Clients are responsible for handling the errors on their own and return the error dom element.
-	Render(r *http.Request) (ret template.HTML)
+	Render(r *http.Request, cacheLookup LookupFunc) (ret template.HTML)
 	PreLoad() (ret template.HTML)
 }
 
@@ -72,11 +72,11 @@ func clientSideRender(
 	}
 }
 
-func startRequest(r *http.Request, pagelet Pagelet) <-chan template.HTML {
+func startRequest(r *http.Request, pagelet Pagelet, cacheLookupFunc LookupFunc) <-chan template.HTML {
 	pageletChannel := make(chan template.HTML)
-	go func() {
-		pageletChannel <- pagelet.Render(r)
-	}()
+	go func(r *http.Request, pagelet Pagelet, cacheLookupFunc LookupFunc) {
+		pageletChannel <- pagelet.Render(r, cacheLookupFunc)
+	}(r, pagelet, cacheLookupFunc)
 	return pageletChannel
 
 }

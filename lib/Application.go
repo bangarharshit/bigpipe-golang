@@ -7,16 +7,21 @@ import (
 	"net/http"
 )
 
+type RenderPagelet func(pageletId string) template.HTML
+type FinishRendering func() bool
+
 // Application is representation of the entire web-page in big-pipe world.
 // For details check - https://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919/
 // Application is composed of small components called pagelets which are rendered in parallel.
 // To render the complete webpage, specify the list of pagelets with container-id in PageletsContainerMapping method.
 type Application interface {
 	// Render generates the basic html markup with containers for individual pagelets.
-	Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool, renderPagelet func(pageletId string) template.HTML)
+	Render(rw http.ResponseWriter, r *http.Request, finishRendering FinishRendering, renderPagelet RenderPagelet)
 
 	// PageletsContainerMapping return the list of pagelet in the application with containerId.
 	PageletsContainerMapping() map[string]Pagelet
+
+	SetupCache(cacheContainerGenerator CacheContainerGenerator)
 }
 
 func servePageletWrapper(
@@ -33,8 +38,13 @@ func servePageletWrapper(
 // It adds application to scope by closure.
 func ServeApplication(application Application, clientSideRendering bool) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		var cacheContainer CacheContainer
+		application.SetupCache(newCache(&cacheContainer))
 		rw.Header().Set("content-type", "text/html")
-		channelTemplateMapping := startPageletRendering(application, r)
+		if (cacheContainer.f == nil) {
+			panic("function not implemented")
+		}
+		channelTemplateMapping := startPageletRendering(application, r, cacheContainer.GetValueForKey)
 		flusher, ok := rw.(http.Flusher)
 		if !ok {
 			http.Error(rw, "Streaming unsupported!", http.StatusInternalServerError)
@@ -59,10 +69,10 @@ func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]Page
 	return
 }
 
-func startPageletRendering(application Application, r *http.Request) map[string]PageletChannelContainer {
+func startPageletRendering(application Application, r *http.Request, cacheLookupFunc LookupFunc) map[string]PageletChannelContainer {
 	channelTemplateMap := make(map[string]PageletChannelContainer)
 	for containerID, pagelet := range application.PageletsContainerMapping() {
-		channelTemplateMap[containerID] = PageletChannelContainer{pagelet, startRequest(r, pagelet)}
+		channelTemplateMap[containerID] = PageletChannelContainer{pagelet, startRequest(r, pagelet, cacheLookupFunc)}
 	}
 	return channelTemplateMap
 }

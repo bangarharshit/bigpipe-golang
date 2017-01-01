@@ -103,7 +103,7 @@ Render Pagelets in template:
         </tr>
     </table>
     ....
-    {{ if (call .PageletFunc)}}
+    {{ if (call .FinishRendering)}}
     {{ end }}
 </body>
 

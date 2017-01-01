@@ -16,6 +16,10 @@
                 <div id="recommendationPageletLoadingBar" class="loader"></div>
                 {{(call .RenderPagelet "recommendationPagelet")}}
             </td>
+            <td>
+                <div id="adsPageletLoadingBar2" class="loader"></div>
+                {{(call .RenderPagelet "adsPagelet2")}}
+            </td>
         </tr>
         <tr>
             <td>
@@ -26,9 +30,13 @@
                 <div id="adsPageletLoadingBar" class="loader"></div>
                 {{(call .RenderPagelet "adsPagelet")}}
             </td>
+            <td>
+                <div id="errorPageletLoadingBar" class="loader"></div>
+                {{(call .RenderPagelet "errorPagelet")}}
+            </td>
         </tr>
     </table>
-    {{ if (call .PageletFunc)}}
+    {{ if (call .FinishRendering)}}
     {{ end }}
 </body>
 </html>
