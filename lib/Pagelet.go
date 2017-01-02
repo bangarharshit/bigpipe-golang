@@ -11,7 +11,6 @@ import (
 // Pagelet is the single unit of rendering in big-pipe world.
 // Pagelets in an application are rendered in parallel.
 // TODO: Pagelets doesn't support their own css and js. Bigpipe supports it - https://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919/
-// TODO: Add a cache between different pagelets to dedupe network calls.
 // TODO: Better error handling. Add context for better request handling.
 type Pagelet interface {
 	// Render generates html from template. The html returned is then inserted into container by application.

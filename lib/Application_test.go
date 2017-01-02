@@ -20,7 +20,7 @@ type TestPagelet struct{}
 var testApplicationContent = "test string"
 
 // Render just put test string inside responsewriter for testing.
-func (testApplication *TestApplication) Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool, renderPagelet func(pageletId string) template.HTML) {
+func (testApplication *TestApplication) Render(rw http.ResponseWriter, r *http.Request, servePagelet FinishRendering, renderPagelet RenderPagelet) {
 	rw.WriteHeader(http.StatusOK)
 	io.WriteString(rw, testApplicationContent)
 }
@@ -30,8 +30,16 @@ func (testApplication *TestApplication) PageletsContainerMapping() map[string]Pa
 	return map[string]Pagelet{}
 }
 
+func (testApplication *TestApplication)SetupCache(cacheContainerGenerator CacheContainerGenerator) {
+
+}
+
+func (testApplicationWithPagelet *TestApplicationWithPagelet)SetupCache(cacheContainerGenerator CacheContainerGenerator) {
+
+}
+
 // Render just put test string inside response writer for testing.
-func (testApplication *TestApplicationWithPagelet) Render(rw http.ResponseWriter, r *http.Request, servePagelet func() bool, renderPagelet func(pageletId string) template.HTML) {
+func (testApplication *TestApplicationWithPagelet) Render(rw http.ResponseWriter, r *http.Request, servePagelet FinishRendering, renderPagelet RenderPagelet) {
 	rw.WriteHeader(http.StatusOK)
 	io.WriteString(rw, "test string")
 	// It is executed in a blocking way by templates. Simulating the same by invoking it manually.
@@ -45,13 +53,14 @@ func (testApplication *TestApplicationWithPagelet) PageletsContainerMapping() ma
 	}
 }
 
-func (testPagelet TestPagelet) Render(r *http.Request) (ret template.HTML) {
+func (testPagelet TestPagelet) Render(r *http.Request, cacheLookupFunc LookupFunc) (ret template.HTML) {
 	return template.HTML("pagelet test content")
 }
 
 func (testPagelet TestPagelet)PreLoad() (ret template.HTML){
 	return template.HTML("")
 }
+
 // For testing handler check - https://elithrar.github.io/article/testing-http-handlers-go/
 func TestServeApplicationRendersApplicationForClientSideRendering(t *testing.T) {
 	testApplication := &TestApplication{}

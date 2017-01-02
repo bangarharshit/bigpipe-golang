@@ -48,9 +48,6 @@ func ServeApplication(application Application, clientSideRendering bool) http.Ha
 		var cacheContainer CacheContainer
 		application.SetupCache(newCache(&cacheContainer))
 		rw.Header().Set("content-type", "text/html")
-		if (cacheContainer.f == nil) {
-			panic("function not implemented")
-		}
 		channelTemplateMapping := startPageletRendering(application, r, cacheContainer.GetValueForKey)
 		flusher, ok := rw.(http.Flusher)
 		if !ok {
