@@ -26,7 +26,7 @@ type Data struct {
 	defer res.Body.Close()
 	return ioutil.ReadAll(res.Body)
  */
-var mockHttpClientCall = func(url string) (interface{}, error) {
+var mockHTTPClientCall = func(url string) (interface{}, error) {
 	fmt.Println("call to http client " + url)
 	if url == "localhost://ads" {
 		time.Sleep(10 * time.Second)
@@ -46,18 +46,22 @@ var mockHttpClientCall = func(url string) (interface{}, error) {
 	}
 }
 
+// PageletCallResult - Sample container for mockHTTPClientCall results.
 type PageletCallResult struct {
 	name string
 	timeToRender string
 }
 
+// PageletDataContainer - Sample container for rendering in templates.
 type PageletDataContainer struct{
 	Name string
 	TimeToRender string
 }
 
+// SetupCache generates a cache which is later used by pagelets for requests dedupe.
+// The cache wraps mockHTTPClientCall and any lookup will make a call to the same and provides safety for multiple goroutines.
 func (homePageApplication HomePageApplication) SetupCache(cacheContainerGenerator bigpipe.CacheContainerGenerator) {
-	cacheContainerGenerator(mockHttpClientCall)
+	cacheContainerGenerator(mockHTTPClientCall)
 }
 
 var samplePageletTemplate = template.Must(template.ParseFiles("templates/samplepagelet.gohtml"))

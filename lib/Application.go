@@ -7,7 +7,13 @@ import (
 	"net/http"
 )
 
+// RenderPagelet is a function which takes pageletId and returns html to be filled in the container
+// For server side rendering it generates the actual html
+// For client side rendering it generates a container with div-id="pageletId" which is later filled by javascript when FinishRendering is called.
 type RenderPagelet func(pageletId string) template.HTML
+
+// FinishRendering is used by client side rendering to render the content in containers generated via RenderPagelet.
+// It is not required by server-side rendering.
 type FinishRendering func() bool
 
 // Application is representation of the entire web-page in big-pipe world.
@@ -21,12 +27,13 @@ type Application interface {
 	// PageletsContainerMapping return the list of pagelet in the application with containerId.
 	PageletsContainerMapping() map[string]Pagelet
 
+	// SetupCache generates a cache which is later used by pagelets for requests dedupe.
 	SetupCache(cacheContainerGenerator CacheContainerGenerator)
 }
 
 func servePageletWrapper(
 	rw http.ResponseWriter,
-	channelTemplateMapping map[string]PageletChannelContainer,
+	channelTemplateMapping map[string]pageletChannelContainer,
 	clientSideRendering bool,
 	flusher http.Flusher) func() bool {
 	return func() bool {
@@ -56,7 +63,7 @@ func ServeApplication(application Application, clientSideRendering bool) http.Ha
 
 // ServePagelet renders individual pagelets in an application. The pagelets are rendered in separate go-routines.
 // Note the following things are not implemented and
-func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]PageletChannelContainer, isClientSideRendering bool, flusher http.Flusher) (success bool) {
+func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]pageletChannelContainer, isClientSideRendering bool, flusher http.Flusher) (success bool) {
 	if !isClientSideRendering {
 		success = true
 		return
@@ -69,15 +76,15 @@ func ServePagelet(rw http.ResponseWriter, channelTemplateMapping map[string]Page
 	return
 }
 
-func startPageletRendering(application Application, r *http.Request, cacheLookupFunc LookupFunc) map[string]PageletChannelContainer {
-	channelTemplateMap := make(map[string]PageletChannelContainer)
+func startPageletRendering(application Application, r *http.Request, cacheLookupFunc LookupFunc) map[string]pageletChannelContainer {
+	channelTemplateMap := make(map[string]pageletChannelContainer)
 	for containerID, pagelet := range application.PageletsContainerMapping() {
-		channelTemplateMap[containerID] = PageletChannelContainer{pagelet, startRequest(r, pagelet, cacheLookupFunc)}
+		channelTemplateMap[containerID] = pageletChannelContainer{pagelet, startRequest(r, pagelet, cacheLookupFunc)}
 	}
 	return channelTemplateMap
 }
 
-func renderPagelet(isClientSideRendering bool, channelTemplateMapping map[string]PageletChannelContainer, flusher http.Flusher, rw http.ResponseWriter) func(pageletId string) template.HTML {
+func renderPagelet(isClientSideRendering bool, channelTemplateMapping map[string]pageletChannelContainer, flusher http.Flusher, rw http.ResponseWriter) func(pageletId string) template.HTML {
 	return func(pageletId string) template.HTML {
 		if isClientSideRendering {
 			return generateContainerDiv(pageletId)

@@ -27,6 +27,8 @@ func (recommendationPagelet RecommendationPagelet) Render(r *http.Request, cache
 	return
 }
 
+// PreLoad gives chance for any cleanup before the actual content is loaded.
+// In this case we are removing the progress bar.
 func (recommendationPagelet RecommendationPagelet) PreLoad() (ret template.HTML)  {
 	buf := bytes.NewBuffer([]byte{})
 	hideLoadingBarTemplateReco.Execute(buf, nil)

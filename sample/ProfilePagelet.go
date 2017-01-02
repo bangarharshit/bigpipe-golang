@@ -27,6 +27,8 @@ func (profilePagelet ProfilePagelet) Render(r *http.Request, cacheLookupFunc big
 	return
 }
 
+// PreLoad gives chance for any cleanup before the actual content is loaded.
+// In this case we are removing the progress bar.
 func (profilePagelet ProfilePagelet) PreLoad() (ret template.HTML)  {
 	buf := bytes.NewBuffer([]byte{})
 	hideLoadingBarTemplateProfile.Execute(buf, nil)

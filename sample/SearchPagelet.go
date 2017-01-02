@@ -27,6 +27,8 @@ func (searchPagelet SearchPagelet) Render(r *http.Request, cacheLookupFunc bigpi
 	return
 }
 
+// PreLoad gives chance for any cleanup before the actual content is loaded.
+// In this case we are removing the progress bar.
 func (searchPagelet SearchPagelet) PreLoad() (ret template.HTML) {
 	buf := bytes.NewBuffer([]byte{})
 	hideLoadingBarTemplateSearch.Execute(buf, nil)

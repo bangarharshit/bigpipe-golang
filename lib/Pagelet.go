@@ -17,10 +17,12 @@ type Pagelet interface {
 	// Render generates html from template. The html returned is then inserted into container by application.
 	// Note - Clients are responsible for handling the errors on their own and return the error dom element.
 	Render(r *http.Request, cacheLookup LookupFunc) (ret template.HTML)
+	// PreLoad gives the user chance to hide things like progress-bar or spinner before the actual content is rendered.
+	// It is called after render is called and before it is flushed.
 	PreLoad() (ret template.HTML)
 }
 
-type PageletChannelContainer struct {
+type pageletChannelContainer struct {
 	pagelet Pagelet
 	pageletChannelTemplate <- chan template.HTML
 }
@@ -28,7 +30,7 @@ type PageletChannelContainer struct {
 func clientSideRender(
 	rw http.ResponseWriter,
 	flusher http.Flusher,
-	templateChannelMapping map[string]PageletChannelContainer) {
+	templateChannelMapping map[string]pageletChannelContainer) {
 	cases := make([]reflect.SelectCase, len(templateChannelMapping))
 	idContainerMapping := make(map[int]string)
 	index := 0
