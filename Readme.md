@@ -1,8 +1,5 @@
-## ping-play
-The bigpipe-golang project is a port of [Ping-Play](https://github.com/brikis98/ping-play) to golang and a significant portion of 
-Readme is reproduced (mostly the generic concepts).
-
 # bigpipe-golang
+### Deprecated - [Webstreams](https://streams.spec.whatwg.org/) are standard and this project should be considered inactive until ported to webstreams.
 The bigpipe-golang project brings [BigPipe](https://www.facebook.com/note.php?note_id=389414033919) streaming to the
 [Golang](https://golang.org/). It includes tools for a) splitting your pages up into small "pagelets",
 which makes it easier to maintain large websites, and b) streaming those pagelets down to the browser as soon as they
@@ -23,6 +20,10 @@ start loading right away, and then, as each backend service responds, the corres
 pagelet) is sent to the browser and rendered on the screen:
 
 ![Page loading with BigPipe](out.gif)
+
+## ping-play
+The bigpipe-golang project is a port of [Ping-Play](https://github.com/brikis98/ping-play) to golang and a significant portion of 
+Readme is reproduced (mostly the generic concepts).
 
 ## Quick Start
 
